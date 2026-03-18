@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Imposter - 4 Player Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #111;
+      color: white;
+      padding: 40px;
+    }
+    #box {
+      background: #222;
+      padding: 30px;
+      border-radius: 10px;
+      max-width: 400px;
+      margin: auto;
+    }
+    button {
+      padding: 12px 25px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 20px;
+      background: #4CAF50;
+      color: white;
+    }
+    button:hover {
+      background: #45a049;
+    }
+  </style>
+</head>
+<body>
+
+<div id="box">
+  <h1>Imposter</h1>
+  <p id="text">Tap Start to begin.</p>
+  <button id="btn" onclick="startGame()">Start</button>
+</div>
+
+<script>
+let player = 1;
+let imposter = null;
+let roles = [];
+let stage = "start";
+
+// Extra fun roles for crewmates
+const extraRoles = ["Detective", "Medic", "Engineer", "Jester"];
+
+// Random clues to spark discussion
+const clues = [
+  "Someone smiled when they saw their role.",
+  "A clue was found: The Imposter prefers odd numbers.",
+  "Someone heard footsteps behind Player 2.",
+  "A shadow moved near Player 3.",
+  "Someone coughed nervously.",
+  "Someone avoided eye contact."
+];
+
+// Discussion prompts to make the debate fun
+const prompts = [
+  "Who looked the most nervous?",
+  "Who pressed the button too quickly?",
+  "Who is acting too quiet?",
+  "Who would make the worst Imposter?",
+  "Who avoided eye contact?",
+  "Who seems too confident?"
+];
+
+function startGame() {
+  player = 1;
+  imposter = Math.floor(Math.random() * 4) + 1;
+
+  // Assign roles
+  roles = [];
+  for (let i = 1; i <= 4; i++) {
+    if (i === imposter) {
+      roles.push("IMPOSTER");
+    } else {
+      const randomRole = extraRoles[Math.floor(Math.random() * extraRoles.length)];
+      roles.push(randomRole);
+    }
+  }
+
+  stage = "nextPlayer";
+  updateScreen();
+}
+
+function updateScreen() {
+  const text = document.getElementById("text");
+  const btn = document.getElementById("btn");
+
+  if (stage === "nextPlayer") {
+    if (player > 4) {
+      const randomClue = clues[Math.floor(Math.random() * clues.length)];
+      const randomPrompt = prompts[Math.floor(Math.random() * prompts.length)];
+
+      text.innerHTML =
+        "All roles have been shown.<br><br>" +
+        "<strong>Clue:</strong> " + randomClue + "<br><br>" +
+        "<strong>Discussion Prompt:</strong><br>" + randomPrompt;
+
+      btn.innerText = "Play Again";
+      btn.onclick = startGame;
+      return;
+    }
+
+    text.innerText = `Give the device to Player ${player}.`;
+    btn.innerText = "Reveal Role";
+    btn.onclick = revealRole;
+  }
+}
+
+function revealRole() {
+  const text = document.getElementById("text");
+  const btn = document.getElementById("btn");
+
+  const role = roles[player - 1];
+  text.innerHTML = `Player ${player}<br><br>Your role is:<br><strong>${role}</strong>`;
+  btn.innerText = "Next Player";
+  btn.onclick = () => {
+    player++;
+    updateScreen();
+  };
+}
+</script>
+
+</body>
+</html>
