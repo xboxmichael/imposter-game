@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mini Shop</title>
+  <style>
+    body{font-family: Arial, Helvetica, sans-serif;margin:0;background:linear-gradient(135deg,#eaf2ff,#fff);}
+    header{background:#131921;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px}
+    .logo{font-weight:700;font-size:20px}
+    .search{flex:1;display:flex}
+    .search input{flex:1;padding:8px;border-radius:4px 0 0 4px;border:0}
+    .search button{padding:8px 12px;border:0;background:#febd69;border-radius:0 4px 4px 0;cursor:pointer}
+    .actions button{margin-left:8px;padding:8px 10px;border-radius:6px;border:0;cursor:pointer}
+    .container{padding:20px;max-width:1100px;margin:20px auto}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+    .card{background:#fff;padding:12px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+    .card img{width:100%;height:140px;object-fit:cover;border-radius:6px}
+    .card h4{margin:8px 0 6px;font-size:16px}
+    .price{font-weight:700;color:#b12704}
+    .card button{margin-top:8px;padding:8px;border:0;background:#ffd814;border-radius:6px;cursor:pointer}
+    .small{font-size:13px;color:#555}
+    #basketPanel{position:fixed;right:20px;top:80px;width:320px;max-height:70vh;background:#fff;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.15);overflow:auto;padding:12px;display:none}
+    .basket-item{display:flex;justify-content:space-between;margin-bottom:8px}
+    .admin{position:fixed;left:20px;top:80px;width:360px;background:#fff;padding:12px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);display:none;max-height:80vh;overflow:auto}
+    footer{text-align:center;padding:18px;color:#666}
+    #checkoutModal{
+      position:fixed;top:0;left:0;width:100%;height:100%;
+      background:rgba(0,0,0,0.5);display:none;justify-content:center;align-items:center;
+    }
+    #checkoutBox{
+      background:#fff;padding:20px;border-radius:8px;width:320px;
+    }
+    #checkoutBox input{width:100%;padding:8px;margin-bottom:8px}
+    #adminSectionTitle{font-weight:bold;margin-top:10px;margin-bottom:4px}
+    #adminSectionDivider{margin:8px 0}
+  </style>
+</head>
+<body>
+  <header>
+    <div id="appLogo" class="logo">MiniShop</div>
+    <div class="search">
+      <input id="searchInput" placeholder="Search for products..." />
+      <button id="searchBtn">Search</button>
+    </div>
+    <div class="actions">
+      <button id="callBtn">Call</button>
+      <button id="textBtn">Text</button>
+      <button id="basketBtn">Basket (<span id="count">0</span>)</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="subtitle" class="small">Welcome to MiniShop – browse and buy items.</div>
+    <div id="products" class="grid"></div>
+  </div>
+
+  <div id="basketPanel">
+    <h3>Your Basket</h3>
+    <div id="basketList"></div>
+    <div class="small">Total: £<span id="total">0.00</span></div>
+    <div style="margin-top:8px"><button id="checkout">Purchase</button></div>
+  </div>
+
+  <!-- OWNER-ONLY ADMIN PANEL (only via ?admin + passcode) -->
+  <div id="adminPanel" class="admin">
+    <h3>Owner Admin Panel</h3>
+
+    <div id="adminSectionTitle">Add / Edit Items</div>
+    <input id="itemName" placeholder="Item name" style="width:100%;margin-bottom:6px">
+    <input id="itemPrice" placeholder="Price (e.g. 9.99)" style="width:100%;margin-bottom:6px">
+    <input id="itemImageUrl" placeholder="Image URL (optional)" style="width:100%;margin-bottom:6px">
+    <input id="itemImageFile" type="file" accept="image/*" style="width:100%;margin-bottom:6px">
+    <button id="addItem">Add Item</button>
+
+    <hr id="adminSectionDivider">
+
+    <div id="adminSectionTitle">Current Items</div>
+    <div id="manageList" class="small"></div>
+
+    <hr id="adminSectionDivider">
+
+    <div id="adminSectionTitle">App Settings</div>
+    <input id="newAppName" placeholder="New app name" style="width:100%;margin-bottom:6px">
+    <input id="newSubtitle" placeholder="New home screen subtitle" style="width:100%;margin-bottom:6px">
+    <input id="adminPassInput" placeholder="Admin passcode (required)" style="width:100%;margin-bottom:6px" type="password">
+    <button id="applyAppChanges">Apply Name / Subtitle</button>
+
+    <div style="margin-top:10px;font-size:12px;color:#777">
+      Default passcode: <b>i love dogs</b> (you can change it below).
+    </div>
+
+    <input id="newPasscode" placeholder="Change admin passcode (optional)" style="width:100%;margin-top:6px;margin-bottom:6px" type="password">
+    <button id="changePasscode">Change Passcode</button>
+  </div>
+
+  <!-- Checkout Modal -->
+  <div id="checkoutModal">
+    <div id="checkoutBox">
+      <h3>Checkout</h3>
+      <input id="custName" placeholder="Your Name">
+      <input id="custEmail" placeholder="Your Email">
+      <input id="custPhone" placeholder="Your Phone Number">
+      <button id="confirmPurchase">Confirm Purchase</button>
+    </div>
+  </div>
+
+  <footer>MiniShop demo</footer>
+
+<script>
+  // ---------- DATA ----------
+  let products = [
+    {id:1,name:'Wireless Headphones',price:59.99,img:'https://via.placeholder.com/300x200?text=Headphones'},
+    {id:2,name:'Smart Speaker',price:89.99,img:'https://via.placeholder.com/300x200?text=Speaker'},
+    {id:3,name:'Coffee Mug',price:12.5,img:'https://via.placeholder.com/300x200?text=Mug'}
+  ];
+  let basket = [];
+  let adminPasscode = "i love dogs";
+
+  // ---------- ELEMENTS ----------
+  const productsEl = document.getElementById('products');
+  const basketPanel = document.getElementById('basketPanel');
+  const countEl = document.getElementById('count');
+  const basketList = document.getElementById('basketList');
+  const totalEl = document.getElementById('total');
+  const adminPanel = document.getElementById('adminPanel');
+  const logoEl = document.getElementById('appLogo');
+  const subtitleEl = document.getElementById('subtitle');
+
+  // ---------- RENDER PRODUCTS ----------
+  function renderProducts(list = products){
+    productsEl.innerHTML = '';
+    list.forEach(p=>{
+      const c = document.createElement('div');
+      c.className='card';
+      c.innerHTML = `
+        <img src="${p.img || 'https://via.placeholder.com/300x200?text=Product'}" alt="">
+        <h4>${p.name}</h4>
+        <div class="price">£${p.price.toFixed(2)}</div>
+        <button data-id="${p.id}">Add to basket</button>`;
+      productsEl.appendChild(c);
+    });
+    productsEl.querySelectorAll('button[data-id]').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        addToBasket(+btn.getAttribute('data-id'));
+      });
+    });
+  }
+
+  // ---------- BASKET ----------
+  function addToBasket(id){
+    const p = products.find(x=>x.id===id);
+    if(!p) return;
+    const found = basket.find(b=>b.id===id);
+    if(found) found.qty++;
+    else basket.push({id:p.id,name:p.name,price:p.price,qty:1});
+    updateBasketUI();
+  }
+
+  function updateBasketUI(){
+    countEl.textContent = basket.reduce((s,i)=>s+i.qty,0);
+    basketList.innerHTML='';
+    let total=0;
+    basket.forEach(item=>{
+      total+=item.price*item.qty;
+      const div=document.createElement('div');
+      div.className='basket-item';
+      div.innerHTML = `<div>${item.name} x${item.qty}</div><div>£${(item.price*item.qty).toFixed(2)}</div>`;
+      basketList.appendChild(div);
+    });
+    totalEl.textContent = total.toFixed(2);
+  }
+
+  // ---------- ADMIN: ITEMS ----------
+  function renderAdminManage(){
+    const manage = document.getElementById('manageList');
+    manage.innerHTML='';
+    products.forEach(p=>{
+      const d=document.createElement('div');
+      d.style.marginBottom='6px';
+      d.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>${p.name} <span style="color:#555">£${p.price.toFixed(2)}</span></div>
+          <div>
+            <button data-edit="${p.id}">Edit</button>
+            <button data-del="${p.id}">Delete</button>
+          </div>
+        </div>`;
+      manage.appendChild(d);
+    });
+
+    manage.querySelectorAll('button[data-del]').forEach(b=>{
+      b.addEventListener('click',()=>{
+        const id=+b.getAttribute('data-del');
+        products = products.filter(x=>x.id!==id);
+        renderProducts();
+        renderAdminManage();
+      });
+    });
+
+    manage.querySelectorAll('button[data-edit]').forEach(b=>{
+      b.addEventListener('click',()=>{
+        const id=+b.getAttribute('data-edit');
+        const p=products.find(x=>x.id===id);
+        if(!p) return;
+        const newName = prompt('New name:',p.name);
+        if(newName===null) return;
+        const newPrice = parseFloat(prompt('New price (£):',p.price));
+        if(isNaN(newPrice)){alert('Invalid price');return;}
+        p.name = newName;
+        p.price = newPrice;
+        renderProducts();
+        renderAdminManage();
+      });
+    });
+  }
+
+  document.getElementById('addItem').addEventListener('click',()=>{
+    const name=document.getElementById('itemName').value.trim();
+    const price=parseFloat(document.getElementById('itemPrice').value);
+    const url=document.getElementById('itemImageUrl').value.trim();
+    const file=document.getElementById('itemImageFile').files[0];
+
+    if(!name || isNaN(price)){
+      alert('Provide name and numeric price');
+      return;
+    }
+
+    let img = url || '';
+    if(file){
+      img = URL.createObjectURL(file);
+    }
+
+    const id = products.length?Math.max(...products.map(p=>p.id))+1:1;
+    products.push({id,name,price,img});
+
+    document.getElementById('itemName').value='';
+    document.getElementById('itemPrice').value='';
+    document.getElementById('itemImageUrl').value='';
+    document.getElementById('itemImageFile').value='';
+
+    renderProducts();
+    renderAdminManage();
+  });
+
+  // ---------- ADMIN: APP SETTINGS ----------
+  document.getElementById('applyAppChanges').addEventListener('click',()=>{
+    const newName = document.getElementById('newAppName').value.trim();
+    const newSub = document.getElementById('newSubtitle').value.trim();
+    const pass = document.getElementById('adminPassInput').value;
+
+    if(pass !== adminPasscode){
+      alert('Wrong admin passcode');
+      return;
+    }
+
+    if(newName) logoEl.textContent = newName;
+    if(newSub) subtitleEl.textContent = newSub;
+
+    document.getElementById('newAppName').value='';
+    document.getElementById('newSubtitle').value='';
+    document.getElementById('adminPassInput').value='';
+    alert('App name / subtitle updated');
+  });
+
+  document.getElementById('changePasscode').addEventListener('click',()=>{
+    const newPass = document.getElementById('newPasscode').value.trim();
+    if(!newPass){
+      alert('Enter a new passcode');
+      return;
+    }
+    adminPasscode = newPass;
+    document.getElementById('newPasscode').value='';
+    alert('Admin passcode changed');
+  });
+
+  // ---------- SEARCH ----------
+  document.getElementById('searchBtn').addEventListener('click',()=>{
+    const q=document.getElementById('searchInput').value.trim().toLowerCase();
+    if(!q){renderProducts();return;}
+    const filtered = products.filter(p=>p.name.toLowerCase().includes(q));
+    renderProducts(filtered);
+  });
+
+  // ---------- CHECKOUT ----------
+  document.getElementById('basketBtn').addEventListener('click',()=>{
+    basketPanel.style.display = basketPanel.style.display==='block'?'none':'block';
+  });
+
+  document.getElementById('checkout').addEventListener('click',()=>{
+    if(basket.length===0){alert('Basket empty');return;}
+    document.getElementById('checkoutModal').style.display='flex';
+  });
+
+  document.getElementById('confirmPurchase').addEventListener('click',()=>{
+    const name=document.getElementById('custName').value.trim();
+    const email=document.getElementById('custEmail').value.trim();
+    const phone=document.getElementById('custPhone').value.trim();
+    if(!name || !email || !phone){
+      alert('Please fill all fields');
+      return;
+    }
+
+    let receipt = 'Receipt\n\n';
+    basket.forEach(i=>{
+      receipt += `${i.name} x${i.qty} — £${(i.price*i.qty).toFixed(2)}\n`;
+    });
+    receipt += `\nTotal: £${totalEl.textContent}\n`;
+    receipt += `\nCustomer: ${name}\nEmail: ${email}\nPhone: ${phone}\n`;
+    alert(receipt);
+
+    basket=[];
+    updateBasketUI();
+    document.getElementById('checkoutModal').style.display='none';
+  });
+
+  // ---------- CALL / TEXT ----------
+  document.getElementById('callBtn').addEventListener('click',()=>{
+    window.location.href = 'tel:07874074988';
+  });
+  document.getElementById('textBtn').addEventListener('click',()=>{
+    window.location.href = 'sms:07874074988';
+  });
+
+  // ---------- ADMIN ACCESS VIA URL ?admin ----------
+  function checkAdminAccess(){
+    const params = new URLSearchParams(window.location.search);
+    if(params.has('admin')){
+      const entered = prompt('Enter admin passcode:');
+      if(entered === adminPasscode){
+        adminPanel.style.display='block';
+      }else{
+        alert('Wrong passcode. Admin panel locked.');
+        adminPanel.style.display='none';
+      }
+    }else{
+      adminPanel.style.display='none';
+    }
+  }
+
+  // ---------- INIT ----------
+  renderProducts();
+  updateBasketUI();
+  renderAdminManage();
+  checkAdminAccess();
+</script>
+</body>
+</html>
